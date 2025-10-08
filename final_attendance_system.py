@@ -13,6 +13,27 @@ def speak(str1):
     speak = Dispatch(("SAPI.SpVoice"))
     speak.Speak(str1)
 
+def create_dynamic_background(width=1280, height=720):
+    # Create an empty image
+    img = np.zeros((height, width, 3), dtype=np.uint8)
+
+    # Create vertical gradient from dark blue to lighter blue
+    for y in range(height):
+        blue_intensity = 50 + int((y / height) * 100)  # from 50 to 150
+        img[y, :, :] = (blue_intensity, blue_intensity // 2, 100)  # BGR format
+
+    # Add styled text "INNOVATIVE TECHNOLOGIES"
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    cv2.putText(img, "INNOVATIVE", (20, 50), font, 2, (255, 255, 255), 3, cv2.LINE_AA)
+    cv2.putText(img, "TECHNOLOGIES", (20, 120), font, 2, (200, 200, 255), 3, cv2.LINE_AA)
+
+    # Add placeholder smaller text below
+    cv2.putText(img, "Learn from data to make", (20, 180), font, 1, (180, 180, 255), 1, cv2.LINE_AA)
+    cv2.putText(img, "decisions and gain deep", (20, 220), font, 1, (180, 180, 255), 1, cv2.LINE_AA)
+    cv2.putText(img, "quantum ideas", (20, 260), font, 1, (180, 180, 255), 1, cv2.LINE_AA)
+
+    return img
+
 # Create Attendance directory if it doesn't exist
 if not os.path.exists('Attendance'):
     os.makedirs('Attendance')
@@ -37,16 +58,8 @@ print('Shape of Faces matrix --> ', FACES.shape)
 knn = KNeighborsClassifier(n_neighbors=5)
 knn.fit(FACES, LABELS)
 
-# Load background image or create default background
-background_image_path = "background.png"
-if os.path.exists(background_image_path):
-    imgBackground = cv2.imread(background_image_path)
-    # Resize background to match the expected size
-    imgBackground = cv2.resize(imgBackground, (640+55, 480+162))
-else:
-    # Create a simple black background if no background image is found
-    imgBackground = np.zeros((480+162, 640+55, 3), dtype=np.uint8)
-    print("⚠️  No background image found. Using default black background.")
+# Generate dynamic background with gradient and styled text
+imgBackground = create_dynamic_background()
 
 COL_NAMES = ['NAME', 'TIME']
 
@@ -94,7 +107,13 @@ while True:
         attendance_list.append([predicted_name, str(timestamp)])
 
     # Display the frame with background
-    imgBackground[162:162 + 480, 55:55 + 640] = frame
+    # Resize frame to fit nicely on the right side of the background
+    frame_resized = cv2.resize(frame, (640, 480))
+    # Position the frame on the right side with some margin
+    x_offset = imgBackground.shape[1] - 640 - 30
+    y_offset = (imgBackground.shape[0] - 480) // 2
+    imgBackground[y_offset:y_offset + 480, x_offset:x_offset + 640] = frame_resized
+
     cv2.imshow("Face Recognition Attendance System", imgBackground)
     k = cv2.waitKey(1)
 
