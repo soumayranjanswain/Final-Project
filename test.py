@@ -28,6 +28,7 @@ knn=KNeighborsClassifier(n_neighbors=5)
 knn.fit(FACES, LABELS)
 
 imgBackground=cv2.imread("background.png")
+imgBackground = cv2.resize(imgBackground, (1280, 720))
 
 COL_NAMES = ['NAME', 'TIME']
 
