@@ -8,7 +8,7 @@ if not os.path.exists('data'):
     os.makedirs('data')
 
 video = cv2.VideoCapture(0)
-facedetect = cv2.CascadeClassifier('data/haarcascade_frontalface_default (1).xml')  # Corrected filename
+facedetect = cv2.CascadeClassifier('data/haarcascade_frontalface_default.xml')
 
 if not video.isOpened():
     print("❌ Error: Could not access the camera")
@@ -17,7 +17,11 @@ if not video.isOpened():
 faces_data = []
 i = 0
 
-name = input("Enter Your Name: ")
+import sys
+if len(sys.argv) > 1:
+    name = sys.argv[1]
+else:
+    name = input("Enter Your Name: ")
 
 print("Collecting face data... Press 'q' to stop or wait until 100 faces are collected")
 
@@ -33,14 +37,15 @@ while True:
     for (x, y, w, h) in faces:
         crop_img = frame[y:y+h, x:x+w, :]
         resized_img = cv2.resize(crop_img, (50, 50))
-        
+
         # Collect face data (every 10th detection to avoid duplicates)
         if len(faces_data) < 100 and i % 10 == 0:
             faces_data.append(resized_img)
-            
+
         i = i + 1
         cv2.putText(frame, str(len(faces_data)), (50, 50), cv2.FONT_HERSHEY_COMPLEX, 1, (50, 50, 255), 1)
         cv2.rectangle(frame, (x, y), (x+w, y+h), (50, 50, 255), 1)
+        cv2.putText(frame, name, (x, y-15), cv2.FONT_HERSHEY_COMPLEX, 1, (255, 255, 255), 1)
     
     cv2.imshow("Frame", frame)
     k = cv2.waitKey(1)

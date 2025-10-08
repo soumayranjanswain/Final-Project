@@ -19,7 +19,7 @@ if not os.path.exists('Attendance'):
 
 # Initialize camera
 video = cv2.VideoCapture(0)
-facedetect = cv2.CascadeClassifier('data/haarcascade_frontalface_default (1).xml')
+facedetect = cv2.CascadeClassifier('data/haarcascade_frontalface_default.xml')
 
 if not video.isOpened():
     print("❌ Error: Could not access the camera")
@@ -41,6 +41,8 @@ knn.fit(FACES, LABELS)
 background_image_path = "background.png"
 if os.path.exists(background_image_path):
     imgBackground = cv2.imread(background_image_path)
+    # Resize background to match the expected size
+    imgBackground = cv2.resize(imgBackground, (640+55, 480+162))
 else:
     # Create a simple black background if no background image is found
     imgBackground = np.zeros((480+162, 640+55, 3), dtype=np.uint8)
@@ -52,56 +54,66 @@ print("Face Recognition Attendance System Started!")
 print("Press 'o' to take attendance")
 print("Press 'q' to quit")
 
+attendance_list = []  # List to hold all detected attendances
+
 while True:
     ret, frame = video.read()
     if not ret:
         print("❌ Failed to grab frame")
         break
-        
+
     # Convert to grayscale for face detection
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     faces = facedetect.detectMultiScale(gray, 1.3, 5)
-    
+
+    # Clear attendance_list for each frame
+    attendance_list = []
+
     for (x, y, w, h) in faces:
         # Crop and resize face for recognition
         crop_img = frame[y:y+h, x:x+w, :]
         resized_img = cv2.resize(crop_img, (50, 50)).flatten().reshape(1, -1)
-        
+
         # Predict the name
         output = knn.predict(resized_img)
         predicted_name = str(output[0])  # Get the predicted name
-        
+
         # Get current timestamp
         ts = time.time()
         date = datetime.fromtimestamp(ts).strftime("%d-%m-%Y")
         timestamp = datetime.fromtimestamp(ts).strftime("%H:%M-%S")
         exist = os.path.isfile("Attendance/Attendance_" + date + ".csv")
-        
+
         # Draw face detection box and name
         cv2.rectangle(frame, (x, y), (x+w, y+h), (0, 0, 255), 1)
         cv2.rectangle(frame, (x, y), (x+w, y+h), (50, 50, 255), 2)
         cv2.rectangle(frame, (x, y-40), (x+w, y), (0, 0, 255), -1)
         cv2.putText(frame, predicted_name, (x, y-15), cv2.FONT_HERSHEY_COMPLEX, 1, (255, 255, 255), 1)
-        
-        # Prepare attendance record
-        attendance = [predicted_name, str(timestamp)]
-    
+
+        # Add to attendance list
+        attendance_list.append([predicted_name, str(timestamp)])
+
     # Display the frame with background
     imgBackground[162:162 + 480, 55:55 + 640] = frame
-    cv2.imshow("soumya - Face Recognition Attendance", imgBackground)  # Window title shows "soumya"
+    cv2.imshow("Face Recognition Attendance System", imgBackground)
     k = cv2.waitKey(1)
-    
+
     # Take attendance when 'o' is pressed
     if k == ord('o'):
-        speak("Attendance Taken for " + predicted_name)
-        time.sleep(2)
-        with open("Attendance/Attendance_" + date + ".csv", "a", newline='') as csvfile:
-            writer = csv.writer(csvfile)
-            if not exist:
-                writer.writerow(COL_NAMES)  # Write header if file is new
-            writer.writerow(attendance)
-        print(f"✅ Attendance recorded: {predicted_name} at {timestamp}")
-    
+        if attendance_list:
+            speak(f"Attendance Taken for {len(attendance_list)} person(s)")
+            time.sleep(2)
+            with open("Attendance/Attendance_" + date + ".csv", "a", newline='') as csvfile:
+                writer = csv.writer(csvfile)
+                if not exist:
+                    writer.writerow(COL_NAMES)  # Write header if file is new
+                for attendance in attendance_list:
+                    writer.writerow(attendance)
+                    print(f"✅ Attendance recorded: {attendance[0]} at {attendance[1]}")
+        else:
+            speak("No faces detected for attendance")
+            print("⚠️ No faces detected")
+
     # Quit when 'q' is pressed
     if k == ord('q'):
         break
